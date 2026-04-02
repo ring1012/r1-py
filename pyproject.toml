@@ -25,6 +25,6 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
-[tool.uv.scripts]
-# Synchronize dependencies for Pyodide worker
-build = "uv run pywrangler sync && bash ./scripts/setup_pyodide_deps.sh"
+[project.scripts]
+# Entry point for 'uv run build' if needed
+build = "scripts.build:main"

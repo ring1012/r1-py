@@ -1,5 +1,5 @@
 {
-	"name": "langchain-cloudflare-example",
+	"name": "r1-py",
 	"main": "src/entry.py",
 	"compatibility_date": "2025-11-02",
 	"compatibility_flags": [
