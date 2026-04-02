@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "uv run pywrangler sync && ./scripts/setup_pyodide_deps.sh && npx wrangler dev",
     "deploy": "uv run pywrangler sync && ./scripts/setup_pyodide_deps.sh && npx wrangler deploy",
+    "build": "uv run pywrangler sync && bash ./scripts/setup_pyodide_deps.sh",
     "start": "uv run pywrangler dev"
   },
   "devDependencies": {
