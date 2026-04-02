@@ -1,4 +1,4 @@
-from langchain_core.tools import tool
+from tool_decorator import tool
 from typing import Optional, Any
 import json
 

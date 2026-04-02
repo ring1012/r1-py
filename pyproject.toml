@@ -6,8 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "webtypy>=0.1.7",
-    "langchain-openai>=0.3.35",
-    "langchain-core>=0.3.81,<1.0.0"
+    # No langchain deps needed — lightweight llm.py and tool_decorator.py
+    # replace langchain-openai and langchain-core using only Python stdlib.
     # NOTE: Do NOT include pydantic - use Pyodide's built-in version
     # pydantic_core requires compiled Rust binaries that aren't available for WebAssembly
 ]

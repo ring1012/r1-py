@@ -11,7 +11,7 @@ Features demonstrated:
 import json
 from tools import R1Tools
 from workers import Response, WorkerEntrypoint
-from langchain_openai import ChatOpenAI
+from llm import ChatOpenAI
 from urllib.parse import urlparse, parse_qs
 
 
