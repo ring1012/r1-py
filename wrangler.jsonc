@@ -1,0 +1,22 @@
+{
+	"name": "langchain-cloudflare-example",
+	"main": "src/entry.py",
+	"compatibility_date": "2025-11-02",
+	"compatibility_flags": [
+		"python_workers"
+	],
+	"ai": {
+		"binding": "AI",
+		"remote": true
+	},
+	"observability": {
+		"enabled": true
+	},
+	"kv_namespaces": [
+		{
+			"binding": "R1",
+			"id": "5b393a6c91294474949285065a2ac85e",
+			"remote": true
+		}
+	]
+}
