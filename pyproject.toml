@@ -17,7 +17,6 @@ dev = [
     "workers-py",
     "workers-runtime-sdk",
     "pytest>=7.0.0",
-    "requests>=2.31.0",
 ]
 
 [tool.pytest.ini_options]

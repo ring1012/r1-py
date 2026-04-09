@@ -179,6 +179,13 @@ class StructuredTool:
         """Invoke the underlying function with keyword arguments."""
         return self._func(**(args or {}))
 
+    async def ainvoke(self, args: dict | None = None) -> Any:
+        """Asynchronously invoke the underlying function."""
+        result = self._func(**(args or {}))
+        if inspect.isawaitable(result):
+            return await result
+        return result
+
     def __call__(self, *args, **kwargs) -> Any:
         return self._func(*args, **kwargs)
 
@@ -250,6 +257,12 @@ class ToolDescriptor:
 
     def invoke(self, args: dict | None = None) -> Any:
         return self._func(**(args or {}))
+
+    async def ainvoke(self, args: dict | None = None) -> Any:
+        result = self._func(**(args or {}))
+        if inspect.isawaitable(result):
+            return await result
+        return result
 
     @property
     def name(self) -> str:

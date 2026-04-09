@@ -8,7 +8,7 @@ Supports:
 """
 
 import json
-import urllib.request
+from js import fetch, Request, Headers
 import inspect
 from typing import Any, Optional
 
@@ -80,15 +80,17 @@ class ChatOpenAI:
     # Invocation
     # ------------------------------------------------------------------
 
-    def invoke(self, messages: list[dict]) -> AIMessage:
-        """Send messages to the chat API and return an AIMessage."""
+    async def ainvoke(self, messages: list[dict]) -> AIMessage:
+        """Send messages to the chat API (async) and return an AIMessage."""
         payload = self._build_payload(messages)
-        response_data = self._post(payload)
+        response_data = await self._post(payload)
         return self._parse_response(response_data)
 
-    async def ainvoke(self, messages: list[dict]) -> AIMessage:
-        """Async version — delegates to sync invoke (Pyodide is single-threaded)."""
-        return self.invoke(messages)
+    def invoke(self, messages: list[dict]) -> AIMessage:
+        """Synchronous invoke - for CF Workers we primarily use ainvoke."""
+        # This is a bit tricky since js.fetch is async. 
+        # For simplicity in this env, we'll suggest ainvoke.
+        raise RuntimeError("Use ainvoke instead of invoke in Cloudflare Workers")
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -128,20 +130,25 @@ class ChatOpenAI:
             },
         }
 
-    def _post(self, payload: dict) -> dict:
+    async def _post(self, payload: dict) -> dict:
         url = f"{self.base_url}/chat/completions"
-        body = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            url,
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        
+        headers = Headers.new()
+        headers.set("Content-Type", "application/json")
+        headers.set("Authorization", f"Bearer {self.api_key}")
+
+        body = json.dumps(payload)
+        req = Request.new(url, method="POST", body=body, headers=headers)
+        
+        # Cloudflare Workers environment: fetch is a promise
+        resp = await fetch(req)
+        if not resp.ok:
+            error_text = await resp.text()
+            raise RuntimeError(f"API Error ({resp.status}): {error_text}")
+            
+        # Parse JSON result
+        data_js = await resp.json()
+        return data_js.to_py()
 
     @staticmethod
     def _parse_response(data: dict) -> AIMessage:

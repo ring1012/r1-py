@@ -1,6 +1,8 @@
 from tool_decorator import tool
 from typing import Optional, Any
 import json
+from js import fetch
+import uuid
 
 
 class R1Tools:
@@ -26,8 +28,62 @@ class R1Tools:
             "service": service
         }
 
+    async def _fetch_media(self, config_key: str, search_key: str, info_key: str):
+        config = self.device_config.get(config_key, {})
+        endpoint = config.get("endpoint", "")
+        data = {"count": 0, info_key: []}
+        r1_headers = {}
+        if endpoint:
+            try:
+                search_url = f"{endpoint}/search?keyword={search_key}"
+                print(f"{config_key} search: {search_url}")
+                resp = await fetch(search_url)
+                if resp.ok:
+                    res_js = await resp.json()
+                    data = res_js.to_py()
+                    for key in resp.headers.keys():
+                        if key.lower().startswith("x-r1"):
+                            r1_headers[key] = resp.headers.get(key)
+                r1_headers["r1-sname"] = "cn.yunzhisheng.music"
+            except Exception as e:
+                print(f"{config_key} search error: {e}")
+        return data, r1_headers
+
+    def _build_playback_response(self, data: dict, display_text: str, service: str, r1_headers: dict = None):
+        ret = {
+            "semantic": self.intent,
+            "code": "SETTING_EXEC",
+            "matchType": "FUZZY",
+            "originIntent": {"nluSlotInfos": []},
+            "data": {"result": data},
+            "confidence": 0.6313702287003818,
+            "modelIntentClsScore": {},
+            "history": "cn.yunzhisheng.setting.mp",
+            "source": "nlu",
+            "uniCarRet": {
+                "result": {},
+                "returnCode": 609,
+                "message": "http post reuqest error"
+            },
+            "asr_recongize": f"播放{display_text}。",
+            "rc": 0,
+            "general": {
+                "text": f"好的，已为您播放{display_text}",
+                "type": "T"
+            },
+            "returnCode": 0,
+            "retTag": "nlu",
+            "service": service,
+            "nluProcessTime": "255",
+            "text": f"播放{display_text}",
+            "responseId": str(uuid.uuid4()).replace("-", "")
+        }
+        if r1_headers:
+            ret["_r1_headers"] = r1_headers
+        return ret
+
     @tool
-    def play_music(self, author: Optional[str] = "", song_name: Optional[str] = "", keyword: Optional[str] = "") -> dict:
+    async def playMusic(self, author: Optional[str] = "", song_name: Optional[str] = "", keyword: Optional[str] = "") -> dict:
         """用于处理播放音乐请求，比如流行歌曲，儿歌等等.
         samples: 我想听刀郎的歌，播放夜曲
         
@@ -36,18 +92,13 @@ class R1Tools:
             song_name: 歌曲名称，可以为空字符串
             keyword: 歌曲搜索关键词，可以为空字符串
         """
-        music_config = self.device_config.get("musicConfig", {})
-        # endpoint = music_config.get("endpoint", "")
+        search_key = f"{author} {song_name} {keyword}".strip()
+        data, r1_headers = await self._fetch_media("musicConfig", search_key, "musicinfo")
         
-        resp = self._base_response(f"好的，已为您播放{author}的{song_name}")
-        # 这里模拟返回音乐数据，实际应该调用后端服务
-        resp["data"] = {
-            "author": author,
-            "song": song_name,
-            "keyword": keyword,
-            "url": "https://example.com/stream.mp3" # 模拟
-        }
-        return resp
+        music_text = f"{author} {song_name}".strip() or keyword or "音乐"
+        ret = self._build_playback_response(data, music_text, "cn.yunzhisheng.music", r1_headers)
+        ret["audioUrl"] = "http://asrv3.hivoice.cn/trafficRouter/r/yxOMl6"
+        return ret
 
     @tool
     def homeassistant(self, target: str, act_value: str, parameter: Optional[str] = "") -> dict:
@@ -68,7 +119,7 @@ class R1Tools:
         }
 
     @tool
-    def play_news(self, user_input: str) -> dict:
+    def playNews(self, user_input: str) -> dict:
         """用于播放新闻。
         samples: 播放新闻
         
@@ -80,21 +131,18 @@ class R1Tools:
         return resp
 
     @tool
-    def play_audio(self, keyword: str, look: Optional[bool] = False) -> dict:
+    async def playAudio(self, keyword: str) -> dict:
         """用于播放故事、视频、有声读物等。
         samples: 我想看三体，播放三体有声读物
         
         Args:
             keyword: 关键词
-            look: 动作，是否是看视频？
         """
-        media_type = "视频" if look else "音频"
-        resp = self._base_response(f"好的，已为您播放{media_type}")
-        resp["data"] = {"type": "audio", "keyword": keyword, "look": look}
-        return resp
+        data, r1_headers = await self._fetch_media("audioConfig", keyword, "audioinfo")
+        return self._build_playback_response(data, keyword, "cn.yunzhisheng.audio", r1_headers)
 
     @tool
-    def play_radio(self, radio_name: str, province: Optional[str] = "") -> dict:
+    def playRadio(self, radio_name: str, province: Optional[str] = "") -> dict:
         """用于播放广播
         samples: 我想听上海交通广播
         
@@ -107,7 +155,7 @@ class R1Tools:
         return resp
 
     @tool
-    def query_weather(self, location_name: Optional[str] = "", offset_day: Optional[int] = 0) -> dict:
+    def queryWeather(self, location_name: Optional[str] = "", offset_day: Optional[int] = 0) -> dict:
         """用于查询天气，位置名默认为空字符串
         samples: 后天什么天气 -> locationName="" offsetDay=2
         
@@ -125,10 +173,10 @@ class R1Tools:
 
     def get_all_tools(self):
         return [
-            self.play_music,
+            self.playMusic,
             self.homeassistant,
-            self.play_news,
-            self.play_audio,
-            self.play_radio,
-            self.query_weather
+            self.playNews,
+            self.playAudio,
+            self.playRadio,
+            self.queryWeather
         ]
