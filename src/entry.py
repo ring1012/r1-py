@@ -145,7 +145,6 @@ class Default(WorkerEntrypoint):
         ]
 
         response = await llm_with_tools.ainvoke(messages)
-        print(response.content)
 
         if response.tool_calls:
             # Map tools by their name
