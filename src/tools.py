@@ -139,7 +139,7 @@ class R1Tools:
             keyword: 关键词
         """
         data, r1_headers = await self._fetch_media("audioConfig", keyword, "audioinfo")
-        return self._build_playback_response(data, keyword, "cn.yunzhisheng.audio", r1_headers)
+        return self._build_playback_response(data, keyword, "cn.yunzhisheng.music", r1_headers)
 
     @tool
     async def playRadio(self, radio_name: str) -> dict:
