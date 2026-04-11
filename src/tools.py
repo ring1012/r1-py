@@ -142,17 +142,51 @@ class R1Tools:
         return self._build_playback_response(data, keyword, "cn.yunzhisheng.audio", r1_headers)
 
     @tool
-    def playRadio(self, radio_name: str, province: Optional[str] = "") -> dict:
+    async def playRadio(self, radio_name: str) -> dict:
         """用于播放广播
         samples: 我想听上海交通广播
         
         Args:
             radio_name: 广播名称
-            province: 省份
         """
-        resp = self._base_response(f"好的，已为您播放广播 {radio_name}")
-        resp["data"] = {"type": "radio", "name": radio_name, "province": province}
-        return resp
+        data, _ = await self._fetch_media("radioConfig", radio_name, "radioinfo")
+        link = ""
+        if isinstance(data, dict):
+            if "data" in data and isinstance(data["data"], dict):
+                link = data["data"].get("url", "")
+            else:
+                link = data.get("url", "")
+
+        response_id = str(uuid.uuid4()).replace("-", "")
+        return {
+            "code": "ANSWER",
+            "matchType": "NOT_UNDERSTAND",
+            "originIntent": {"nluSlotInfos": []},
+            "confidence": 0.088038474,
+            "modelIntentClsScore": {},
+            "history": "cn.yunzhisheng.chat",
+            "source": "krc",
+            "uniCarRet": {
+                "result": {},
+                "returnCode": 609,
+                "message": "http post reuqest error"
+            },
+            "asr_recongize": f"{radio_name}。",
+            "rc": 0,
+            "general": {
+                "style": "translation",
+                "audio": link,
+                "mood": "中性",
+                "text": f"好的，已为您播放 {radio_name}"
+            },
+            "returnCode": 0,
+            "audioUrl": "http://asrv3.hivoice.cn/trafficRouter/r/0bXs9E",
+            "retTag": "nlu",
+            "service": "cn.yunzhisheng.chat",
+            "nluProcessTime": "648",
+            "text": radio_name,
+            "responseId": response_id
+        }
 
     @tool
     def queryWeather(self, location_name: Optional[str] = "", offset_day: Optional[int] = 0) -> dict:
