@@ -29,16 +29,19 @@ class Default(WorkerEntrypoint):
             path = url.path
             
             # Handle /r1/ai/chat endpoint
-            if path == "/r1/ai/chat":
-                # Get user input from query string
-                query_params = parse_qs(url.query)
-                user_msg = query_params.get("text", [""])[0]
-                
+            if path == "/r1/ai/chat/completions":
+                # Get user input from POST body
+                try:
+                    body = await request.json()
+                    messages = body.get("messages", [])
+                except:
+                    messages = []
+
                 # Get serial number from r1-serial header
                 serial = request.headers.get("r1-serial")
                 if not serial:
                     # Fallback to serial query param if header missing
-                    # some clients might send it as param
+                    query_params = parse_qs(url.query)
                     serial = query_params.get("serial", [""])[0]
                     if not serial:
                         return Response.json({"error": "Missing r1-serial header or serial query param"}, status=400)
@@ -87,7 +90,7 @@ class Default(WorkerEntrypoint):
                     except Exception as e:
                         print(f"Error decoding x-r1-ai header: {e}")
 
-                return await self.process_chat(user_msg, device_config, ai_header_config)
+                return await self.process_chat(messages, device_config, ai_header_config)
             
             # Default fall-through
             return Response.json({"error": "Endpoint not found"}, status=404)
@@ -101,7 +104,7 @@ class Default(WorkerEntrypoint):
 
     # MARK: - Chat Processing Handler
 
-    async def process_chat(self, message, device_config, ai_header_config=None):
+    async def process_chat(self, messages, device_config, ai_header_config=None):
         """Process chat request with specific device config."""
         ai_config = device_config.get("aiConfig", ai_header_config or {})
         
@@ -139,10 +142,11 @@ class Default(WorkerEntrypoint):
         llm_with_tools = llm.bind_tools(all_tools)
 
         # Prepare messages
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": message}
-        ]
+        if system_prompt:
+            # Check if system message already exists (to avoid duplicates)
+            has_system = any(m.get("role") == "system" for m in messages)
+            if not has_system:
+                messages.insert(0, {"role": "system", "content": system_prompt})
 
         response = await llm_with_tools.ainvoke(messages)
 
