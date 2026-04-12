@@ -171,8 +171,26 @@ class Default(WorkerEntrypoint):
                     "error": response.content
                 })
 
-        # Regular assistant response
+        # Regular assistant response (TTS fall-through)
         return Response.json({
-            "general": {"text": response.content, "type": "T"},
-            "code": "CHAT_RESP"
+            "code": "ANSWER",
+            "matchType": "NOT_UNDERSTAND",
+            "confidence": 0.8,
+            "history": "cn.yunzhisheng.chat",
+            "source": "nlu",
+            "asr_recongize": "OK",
+            "rc": 0,
+            "general": {
+                "style": "CQA_common_customized",
+                "text": response.content,
+                "type": "T",
+                "resourceId": "904757"
+            },
+            "returnCode": 0,
+            "audioUrl": "http://asrv3.hivoice.cn/trafficRouter/r/TRdECS",
+            "retTag": "nlu",
+            "service": "cn.yunzhisheng.chat",
+            "nluProcessTime": "717",
+            "text": "OK",
+            "responseId": "9a83414b09024d9d85df88aa07cad8c9"
         })
