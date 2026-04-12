@@ -92,7 +92,7 @@ class R1Tools:
             song_name: 歌曲名称，可以为空字符串
             keyword: 歌曲搜索关键词，可以为空字符串
         """
-        search_key = f"{author} {song_name} {keyword}".strip()
+        search_key = keyword or f"{author} {song_name}".strip()
         data, r1_headers = await self._fetch_media("musicConfig", search_key, "musicinfo")
         
         music_text = f"{author} {song_name}".strip() or keyword or "音乐"
