@@ -66,7 +66,7 @@ class Default(WorkerEntrypoint):
 
                 # 2. Fallback to default if needed
                 if not device_config:
-                    config_str = await self.env.R1.get("device:default")
+                    config_str = await self.env.R1.get("device:DEFAULT")
                     if config_str:
                         try:
                             device_config = json.loads(config_str)
@@ -106,7 +106,9 @@ class Default(WorkerEntrypoint):
 
     async def process_chat(self, messages, device_config, ai_header_config=None):
         """Process chat request with specific device config."""
-        ai_config = device_config.get("aiConfig", ai_header_config or {})
+        ai_config = device_config.get("aiConfig")
+        if not ai_config or not ai_config.get("key"):
+            ai_config = ai_header_config or {}
         
         model = ai_config.get("model")
         endpoint = ai_config.get("endpoint")
