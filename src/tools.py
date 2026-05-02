@@ -237,9 +237,12 @@ class R1Tools:
             # ── 1. 解析经纬度 ──────────────────────────────────────────────
             lat, lon = self._get_location()
 
-            if location_name:
-                # 用地名换取经纬度
-                geo_url = f"{endpoint}/geo/v2/city/lookup?location={location_name}"
+            # 优先使用 location_name，如果没有则使用当前坐标反查地名
+            geo_query = location_name if location_name else (f"{lon},{lat}" if (lat and lon) else None)
+            location_label = location_name or "当地"
+
+            if geo_query:
+                geo_url = f"{endpoint}/geo/v2/city/lookup?location={geo_query}"
                 print(f"[weather] geo lookup: {geo_url}")
                 geo_resp = await fetch(geo_url, headers=headers)
                 if geo_resp.ok:
@@ -248,6 +251,7 @@ class R1Tools:
                     if locations:
                         lat = str(locations[0].get("lat", lat))
                         lon = str(locations[0].get("lon", lon))
+                        location_label = locations[0].get("name", location_label)
 
             if not lat or not lon:
                 return {
@@ -257,7 +261,6 @@ class R1Tools:
                 }
 
             location_param = f"{lon},{lat}"  # QWeather 格式: 经度,纬度
-            location_label = location_name or "当地"
 
             # ── 2. 查询7天天气预报 ─────────────────────────────────────────
             day_url = f"{endpoint}/v7/weather/7d?location={location_param}"
@@ -291,7 +294,7 @@ class R1Tools:
 
             parts = [
                 f"{location_label}{day_label}的天气：{text_day}，",
-                f"最高气温 {temp_max}°C，最低气温 {temp_min}°C，",
+                f"气温{temp_min}°C到{temp_max}°C，",
                 f"{wind_dir}{wind_scale}级风。"
             ]
 
@@ -335,7 +338,7 @@ class R1Tools:
                         for a in alerts:
                             desc = a.get("description", "")
                             if desc:
-                                parts.append(f"⚠️预警：{desc}")
+                                parts.append(f"{desc}")
                 except Exception as e:
                     print(f"[weather] alert error: {e}")
 
@@ -349,11 +352,11 @@ class R1Tools:
                     if offset_day < len(indices_daily):
                         idx_text = indices_daily[offset_day].get("text", "")
                         if idx_text:
-                            parts.append(f"建议：{idx_text}")
+                            parts.append(f"{idx_text}")
                     elif indices_daily:
                         idx_text = indices_daily[0].get("text", "")
                         if idx_text:
-                            parts.append(f"生活提示：{idx_text}")
+                            parts.append(f"{idx_text}")
             except Exception as e:
                 print(f"[weather] indices error: {e}")
 
