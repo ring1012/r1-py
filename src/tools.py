@@ -98,7 +98,7 @@ class R1Tools:
             # 播放歌单逻辑
             serial = self.request_headers.get("r1-serial", "")
             headers = {"x-r1-serial": serial}
-            playlist_url = f"https://r1.huan.dedyn.io/api/music/playList?keyword={playlist_name}"
+            playlist_url = f"https://r1.huan.dedyn.io/api/music/song-list?keyword={playlist_name}"
             
             data = {"count": 0, "musicinfo": []}
             try:
