@@ -175,7 +175,8 @@ class R1Tools:
         except Exception as e:
             print(f"[news] error: {e}")
             
-        return self._build_playback_response(data, "新闻", "cn.yunzhisheng.music")
+        r1_headers = {"r1-sname": "cn.yunzhisheng.music"}
+        return self._build_playback_response(data, "新闻", "cn.yunzhisheng.music", r1_headers)
 
     @tool
     async def playAudio(self, keyword: str) -> dict:
