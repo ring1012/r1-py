@@ -120,16 +120,62 @@ class R1Tools:
         }
 
     @tool
-    def playNews(self, user_input: str) -> dict:
+    async def playNews(self, user_input: str) -> dict:
         """用于播放新闻。
         samples: 播放新闻
         
         Args:
             user_input: 用户输入关键词或描述
         """
-        resp = self._base_response("好的，已为您播放新闻")
-        resp["data"] = {"type": "news", "query": user_input}
-        return resp
+        url = "https://apppc.cnr.cn/cnr45609411d2c5a16/e281277129d478c12c2ed58e84ca906b/f76a0411ae1ff31be9f9e28f0b51348b"
+        
+        body = {
+            "chanId": "64", # 中国之声
+            "pageIndex": 1,
+            "perPage": 40,
+            "lastNewsId": "0",
+            "docPubTime": ""
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": "https://www.cnr.cn/",
+            "Origin": "https://www.cnr.cn"
+        }
+        
+        data = {"count": 0, "musicinfo": []}
+        try:
+            print(f"[news] fetching from cnr...")
+            resp = await fetch(url, method="POST", headers=headers, body=json.dumps(body))
+            if resp.ok:
+                res_js = await resp.json()
+                categories = res_js.get("data", {}).get("categories", [])
+                if categories:
+                    items = categories[0].get("detail", [])
+                    music_info = []
+                    for idx, item in enumerate(items):
+                        link = item.get("other_info9", "")
+                        if not link or "m3u8" in link:
+                            continue
+                        music_info.append({
+                            "id": idx,
+                            "title": item.get("title", "新闻"),
+                            "artist": "中国之声",
+                            "url": link
+                        })
+                    data = {
+                        "count": len(music_info),
+                        "musicinfo": music_info,
+                        "pagesize": str(len(music_info)),
+                        "errorCode": 0,
+                        "page": "1",
+                        "source": 1
+                    }
+        except Exception as e:
+            print(f"[news] error: {e}")
+            
+        return self._build_playback_response(data, "新闻", "cn.yunzhisheng.music")
 
     @tool
     async def playAudio(self, keyword: str) -> dict:
