@@ -90,7 +90,7 @@ class Default(WorkerEntrypoint):
                     except Exception as e:
                         print(f"Error decoding x-r1-ai header: {e}")
 
-                return await self.process_chat(messages, device_config, ai_header_config)
+                return await self.process_chat(messages, device_config, ai_header_config, request)
             
             # Default fall-through
             return Response.json({"error": "Endpoint not found"}, status=404)
@@ -104,7 +104,7 @@ class Default(WorkerEntrypoint):
 
     # MARK: - Chat Processing Handler
 
-    async def process_chat(self, messages, device_config, ai_header_config=None):
+    async def process_chat(self, messages, device_config, ai_header_config=None, request=None):
         """Process chat request with specific device config."""
         ai_config = device_config.get("aiConfig")
         if not ai_config or not ai_config.get("key"):
@@ -137,18 +137,38 @@ class Default(WorkerEntrypoint):
             extra_body=extra_body
         )
         
-        # Initialize tools with device context
-        r1_tools = R1Tools(device_config)
+        # Collect request headers for tools
+        request_headers = {}
+        if request is not None:
+            try:
+                for key in request.headers.keys():
+                    request_headers[key.lower()] = request.headers.get(key)
+            except Exception as e:
+                print(f"Error reading request headers: {e}")
+        
+        # Initialize tools with device context and request headers
+        r1_tools = R1Tools(device_config, request_headers)
         all_tools = r1_tools.get_all_tools()
         
         llm_with_tools = llm.bind_tools(all_tools)
 
+        # Build UTC+8 time prefix for system prompt
+        try:
+            now_utc8 = time.gmtime(time.time() + 8 * 3600)
+            time_str = time.strftime("%Y年%m月%d日 %H:%M", now_utc8)
+            weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+            weekday_str = weekdays[now_utc8.tm_wday]
+            time_context = f"当前时间：{time_str}（{weekday_str}）（UTC+8）"
+        except Exception as e:
+            print(f"Error building time context: {e}")
+            time_context = ""
+
         # Prepare messages
-        if system_prompt:
-            # Check if system message already exists (to avoid duplicates)
+        if system_prompt or time_context:
             has_system = any(m.get("role") == "system" for m in messages)
             if not has_system:
-                messages.insert(0, {"role": "system", "content": system_prompt})
+                full_system = f"{time_context}\n{system_prompt}" if (time_context and system_prompt) else (time_context or system_prompt or "")
+                messages.insert(0, {"role": "system", "content": full_system})
 
         response = await llm_with_tools.ainvoke(messages)
 
