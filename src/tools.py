@@ -2,7 +2,7 @@ from tool_decorator import tool
 from typing import Optional, Any
 import json
 import base64
-from js import fetch
+from workers import fetch
 import uuid
 
 
@@ -41,8 +41,7 @@ class R1Tools:
                 print(f"{config_key} search: {search_url}")
                 resp = await fetch(search_url)
                 if resp.ok:
-                    res_js = await resp.json()
-                    data = res_js.to_py()
+                    data = await resp.json()
                     for key in resp.headers.keys():
                         if key.lower().startswith("x-r1"):
                             r1_headers[key] = resp.headers.get(key)
@@ -242,9 +241,9 @@ class R1Tools:
                 # 用地名换取经纬度
                 geo_url = f"{endpoint}/geo/v2/city/lookup?location={location_name}"
                 print(f"[weather] geo lookup: {geo_url}")
-                geo_resp = await fetch(geo_url, {"headers": headers})
+                geo_resp = await fetch(geo_url, headers=headers)
                 if geo_resp.ok:
-                    geo_data = (await geo_resp.json()).to_py()
+                    geo_data = await geo_resp.json()
                     locations = geo_data.get("location", [])
                     if locations:
                         lat = str(locations[0].get("lat", lat))
@@ -263,10 +262,10 @@ class R1Tools:
             # ── 2. 查询7天天气预报 ─────────────────────────────────────────
             day_url = f"{endpoint}/v7/weather/7d?location={location_param}"
             print(f"[weather] 7d: {day_url}")
-            day_resp = await fetch(day_url, {"headers": headers})
+            day_resp = await fetch(day_url, headers=headers)
             if not day_resp.ok:
                 raise Exception(f"7d weather API error: {day_resp.status}")
-            day_data = (await day_resp.json()).to_py()
+            day_data = await day_resp.json()
             daily_list = day_data.get("daily", [])
 
             if offset_day >= len(daily_list):
@@ -301,9 +300,9 @@ class R1Tools:
                 # 3a. 逐小时预报 - 查找下一场雨
                 try:
                     hour_url = f"{endpoint}/v7/weather/24h?location={location_param}"
-                    hour_resp = await fetch(hour_url, {"headers": headers})
+                    hour_resp = await fetch(hour_url, headers=headers)
                     if hour_resp.ok:
-                        hour_data = (await hour_resp.json()).to_py()
+                        hour_data = await hour_resp.json()
                         hourly_list = hour_data.get("hourly", [])
                         if hourly_list:
                             first_icon = int(hourly_list[0].get("icon", "100") or "100")
@@ -329,9 +328,9 @@ class R1Tools:
                 # 3b. 天气预警
                 try:
                     alert_url = f"{endpoint}/weatheralert/v1/current/{lat}/{lon}"
-                    alert_resp = await fetch(alert_url, {"headers": headers})
+                    alert_resp = await fetch(alert_url, headers=headers)
                     if alert_resp.ok:
-                        alert_data = (await alert_resp.json()).to_py()
+                        alert_data = await alert_resp.json()
                         alerts = alert_data.get("alerts", [])
                         for a in alerts:
                             desc = a.get("description", "")
@@ -343,9 +342,9 @@ class R1Tools:
             # ── 4. 生活指数 ────────────────────────────────────────────────
             try:
                 indices_url = f"{endpoint}/v7/indices/1d?type=1,3&location={location_param}"
-                indices_resp = await fetch(indices_url, {"headers": headers})
+                indices_resp = await fetch(indices_url, headers=headers)
                 if indices_resp.ok:
-                    indices_data = (await indices_resp.json()).to_py()
+                    indices_data = await indices_resp.json()
                     indices_daily = indices_data.get("daily", [])
                     if offset_day < len(indices_daily):
                         idx_text = indices_daily[offset_day].get("text", "")
