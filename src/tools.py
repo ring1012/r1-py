@@ -363,10 +363,27 @@ class R1Tools:
             print(f"[weather] error: {e}")
             msg = f"天气查询失败：{str(e)}"
 
-        return {
-            "general": {"text": msg, "type": "T"},
-            "code": "SETTING_EXEC",
-            "service": "cn.yunzhisheng.weather"
+        return  {
+            "code": "ANSWER",
+            "matchType": "NOT_UNDERSTAND",
+            "confidence": 0.8,
+            "history": "cn.yunzhisheng.chat",
+            "source": "nlu",
+            "asr_recongize": "OK",
+            "rc": 0,
+            "general": {
+                "style": "CQA_common_customized",
+                "text": msg,
+                "type": "T",
+                "resourceId": "904757"
+            },
+            "returnCode": 0,
+            "audioUrl": "http://asrv3.hivoice.cn/trafficRouter/r/TRdECS",
+            "retTag": "nlu",
+            "service": "cn.yunzhisheng.chat",
+            "nluProcessTime": "717",
+            "text": "OK",
+            "responseId": "9a83414b09024d9d85df88aa07cad8c9"
         }
 
     def get_all_tools(self):
