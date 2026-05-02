@@ -84,15 +84,37 @@ class R1Tools:
         return ret
 
     @tool
-    async def playMusic(self, author: Optional[str] = "", song_name: Optional[str] = "", keyword: Optional[str] = "") -> dict:
-        """用于处理播放音乐请求，比如流行歌曲，儿歌等等.
-        samples: 我想听刀郎的歌，播放夜曲
+    async def playMusic(self, author: Optional[str] = "", song_name: Optional[str] = "", keyword: Optional[str] = "", playlist_name: Optional[str] = "") -> dict:
+        """用于处理播放音乐请求，比如流行歌曲，儿歌，或者播放特定歌单。
+        samples: 我想听刀郎的歌，播放夜曲，播放我的收藏，播放周杰伦歌单
         
         Args:
             author: 歌曲作者，可以为空字符串
             song_name: 歌曲名称，可以为空字符串
             keyword: 歌曲搜索关键词，可以为空字符串
+            playlist_name: 歌单名称，比如“我的收藏”
         """
+        if playlist_name:
+            # 播放歌单逻辑
+            serial = self.request_headers.get("r1-serial", "")
+            headers = {"x-r1-serial": serial}
+            playlist_url = f"https://r1.huan.dedyn.io/api/music/playList?keyword={playlist_name}"
+            
+            data = {"count": 0, "musicinfo": []}
+            try:
+                print(f"[playlist] fetching playlist: {playlist_name}")
+                resp = await fetch(playlist_url, headers=headers)
+                if resp.ok:
+                    data = await resp.json()
+            except Exception as e:
+                print(f"[playlist] error: {e}")
+            
+            r1_headers = {"r1-sname": "cn.yunzhisheng.music"}
+            ret = self._build_playback_response(data, playlist_name, "cn.yunzhisheng.music", r1_headers)
+            ret["audioUrl"] = "http://asrv3.hivoice.cn/trafficRouter/r/yxOMl6"
+            return ret
+
+        # 普通音乐搜索逻辑
         search_key = keyword or f"{author} {song_name}".strip()
         data, r1_headers = await self._fetch_media("musicConfig", search_key, "musicinfo")
         
