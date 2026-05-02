@@ -294,11 +294,7 @@ class R1Tools:
         api_key = weather_cfg.get("apiKey", "")
 
         if not endpoint or not api_key:
-            return {
-                "general": {"text": "天气服务未配置，请在服务配置中填写 QWeather 的 Endpoint 和 API Key。", "type": "T"},
-                "code": "SETTING_EXEC",
-                "service": "cn.yunzhisheng.weather"
-            }
+            raise Exception("天气服务未配置，请在服务配置中填写 QWeather 的 Endpoint 和 API Key。")
 
         headers = {"X-QW-Api-Key": api_key, "Accept-Encoding": "gzip"}
 
@@ -434,6 +430,7 @@ class R1Tools:
         except Exception as e:
             print(f"[weather] error: {e}")
             msg = f"天气查询失败：{str(e)}"
+            raise e
 
         return  {
             "code": "ANSWER",
