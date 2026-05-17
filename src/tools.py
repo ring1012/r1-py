@@ -34,8 +34,8 @@ class R1Tools:
     def _resolve_endpoint(self, header_key: str, service_type: str, device_config_key: str) -> str:
         """Resolve the best endpoint for a service.
         1. Decode the device header to get the preferred provider name.
-        2. If providers_config has a matching entry, use its endpoint.
-        3. Fallback to the device's own config endpoint.
+        2. Iterate providers_config[service_type] list to find a matching entry.
+        3. Fallback to the device's own config endpoint if no match found.
         """
         preferred_provider = ""
         header_val = self.request_headers.get(header_key, "")
@@ -47,17 +47,19 @@ class R1Tools:
             except Exception as e:
                 print(f"Error decoding {header_key} header: {e}")
 
-        # Match against providers_config
+        # Iterate providers list to find matching provider
         if preferred_provider and preferred_provider != "default":
-            provider_cfg = self.providers_config.get(service_type, {})
-            if isinstance(provider_cfg, dict):
-                if provider_cfg.get("provider") == preferred_provider:
-                    endpoint = provider_cfg.get("endpoint", "").rstrip("/")
-                    if endpoint:
-                        print(f"[{service_type}] using providers config endpoint for '{preferred_provider}': {endpoint}")
-                        return endpoint
+            provider_list = self.providers_config.get(service_type, [])
+            if isinstance(provider_list, list):
+                for entry in provider_list:
+                    if isinstance(entry, dict) and entry.get("provider") == preferred_provider:
+                        endpoint = entry.get("endpoint", "").rstrip("/")
+                        if endpoint:
+                            print(f"[{service_type}] matched provider '{preferred_provider}' -> {endpoint}")
+                            return endpoint
+                print(f"[{service_type}] provider '{preferred_provider}' not found in providers list, using device default")
 
-        # Fallback to device config
+        # Fallback to device config endpoint
         return self.device_config.get(device_config_key, {}).get("endpoint", "")
 
     async def _fetch_media(self, config_key: str, search_key: str, info_key: str, endpoint_override: str = ""):
