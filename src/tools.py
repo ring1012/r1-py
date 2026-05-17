@@ -7,9 +7,10 @@ import uuid
 
 
 class R1Tools:
-    def __init__(self, device_config: dict, request_headers: dict = None):
+    def __init__(self, device_config: dict, request_headers: dict = None, providers_config: dict = None):
         self.device_config = device_config
         self.request_headers = request_headers or {}
+        self.providers_config = providers_config or {}
         self.intent = {
             "intent": {
                 "operations": [
@@ -30,9 +31,38 @@ class R1Tools:
             "service": service
         }
 
-    async def _fetch_media(self, config_key: str, search_key: str, info_key: str):
+    def _resolve_endpoint(self, header_key: str, service_type: str, device_config_key: str) -> str:
+        """Resolve the best endpoint for a service.
+        1. Decode the device header to get the preferred provider name.
+        2. If providers_config has a matching entry, use its endpoint.
+        3. Fallback to the device's own config endpoint.
+        """
+        preferred_provider = ""
+        header_val = self.request_headers.get(header_key, "")
+        if header_val:
+            try:
+                decoded = base64.b64decode(header_val).decode("utf-8")
+                prefs = json.loads(decoded)
+                preferred_provider = prefs.get("provider", "")
+            except Exception as e:
+                print(f"Error decoding {header_key} header: {e}")
+
+        # Match against providers_config
+        if preferred_provider and preferred_provider != "default":
+            provider_cfg = self.providers_config.get(service_type, {})
+            if isinstance(provider_cfg, dict):
+                if provider_cfg.get("provider") == preferred_provider:
+                    endpoint = provider_cfg.get("endpoint", "").rstrip("/")
+                    if endpoint:
+                        print(f"[{service_type}] using providers config endpoint for '{preferred_provider}': {endpoint}")
+                        return endpoint
+
+        # Fallback to device config
+        return self.device_config.get(device_config_key, {}).get("endpoint", "")
+
+    async def _fetch_media(self, config_key: str, search_key: str, info_key: str, endpoint_override: str = ""):
         config = self.device_config.get(config_key, {})
-        endpoint = config.get("endpoint", "")
+        endpoint = endpoint_override or config.get("endpoint", "")
         data = {"count": 0, info_key: []}
         r1_headers = {}
         if endpoint:
@@ -116,7 +146,8 @@ class R1Tools:
 
         # 普通音乐搜索逻辑
         search_key = keyword or f"{author} {song_name}".strip()
-        data, r1_headers = await self._fetch_media("musicConfig", search_key, "musicinfo")
+        music_endpoint = self._resolve_endpoint("x-r1-music", "music", "musicConfig")
+        data, r1_headers = await self._fetch_media("musicConfig", search_key, "musicinfo", music_endpoint)
         
         music_text = f"{author} {song_name}".strip() or keyword or "音乐"
         ret = self._build_playback_response(data, music_text, "cn.yunzhisheng.music", r1_headers)
@@ -208,7 +239,8 @@ class R1Tools:
         Args:
             keyword: 关键词
         """
-        data, r1_headers = await self._fetch_media("audioConfig", keyword, "audioinfo")
+        story_endpoint = self._resolve_endpoint("x-r1-story", "story", "audioConfig")
+        data, r1_headers = await self._fetch_media("audioConfig", keyword, "audioinfo", story_endpoint)
         return self._build_playback_response(data, keyword, "cn.yunzhisheng.music", r1_headers)
 
     @tool

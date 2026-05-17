@@ -146,8 +146,17 @@ class Default(WorkerEntrypoint):
             except Exception as e:
                 print(f"Error reading request headers: {e}")
         
-        # Initialize tools with device context and request headers
-        r1_tools = R1Tools(device_config, request_headers)
+        # Fetch providers config from KV
+        providers_config = {}
+        providers_str = await self.env.R1.get("providers")
+        if providers_str:
+            try:
+                providers_config = json.loads(providers_str)
+            except Exception as e:
+                print(f"Error parsing providers config: {e}")
+
+        # Initialize tools with device context, request headers and providers config
+        r1_tools = R1Tools(device_config, request_headers, providers_config)
         all_tools = r1_tools.get_all_tools()
         
         llm_with_tools = llm.bind_tools(all_tools)
