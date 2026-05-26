@@ -15,6 +15,7 @@ from tools import R1Tools
 from workers import Response, WorkerEntrypoint
 from llm import ChatOpenAI
 from urllib.parse import urlparse, parse_qs
+from js import fetch, Request, Headers
 
 
 class Default(WorkerEntrypoint):
@@ -92,8 +93,39 @@ class Default(WorkerEntrypoint):
 
                 return await self.process_chat(messages, device_config, ai_header_config, request)
             
-            # Default fall-through
-            return Response.json({"error": "Endpoint not found"}, status=404)
+            # Proxy for non-chat paths
+            real_endpoint = request.headers.get("x-r1-real")
+            if not real_endpoint:
+                return Response.json({"error": "Not Found"}, status=404)
+
+            target_base = real_endpoint.strip().rstrip("/")
+            target_path = path if path.startswith("/") else "/" + path
+            target_url = target_base + target_path
+
+            new_headers = Headers.new()
+            for key in request.headers.keys():
+                kl = key.lower()
+                if kl in ("host", "content-length", "x-r1-real"):
+                    continue
+                new_headers.set(key, request.headers.get(key))
+
+            method = request.method.upper()
+            body = None
+            if method in ("POST", "PUT", "PATCH", "DELETE"):
+                try:
+                    body = await request.text()
+                except Exception:
+                    body = None
+
+            req = Request.new(target_url, method=method, body=body, headers=new_headers)
+            resp = await fetch(req)
+
+            resp_body = await resp.text()
+            resp_headers = {}
+            for key in resp.headers.keys():
+                resp_headers[key] = resp.headers.get(key)
+
+            return Response(resp_body, status=resp.status, headers=resp_headers)
 
         except Exception as e:
             print(f"Error: {e}")
