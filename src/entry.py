@@ -144,7 +144,7 @@ class Default(WorkerEntrypoint):
         
         model = ai_config.get("model")
         endpoint = ai_config.get("endpoint")
-        cdn = ai_config.get("cdn")
+        cdn = None
         api_key = ai_config.get("key")
         system_prompt = ai_config.get("systemPrompt")
         extra_body_str = ai_config.get("extraBody", "{}")
