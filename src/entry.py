@@ -226,7 +226,7 @@ class Default(WorkerEntrypoint):
                 if isinstance(result, dict):
                     # Extract r1 headers if present
                     r1_headers = result.pop("_r1_headers", None) or {}
-                    r1_headers["tool_call_id"] = tc["id"]
+                    r1_headers["tool_call_id"] = tc["name"]
                     return Response.json(result, headers=r1_headers)
                 else:
                     return Response.json({
