@@ -225,7 +225,8 @@ class Default(WorkerEntrypoint):
                 # If result is a dict, it's the structured box client response
                 if isinstance(result, dict):
                     # Extract r1 headers if present
-                    r1_headers = result.pop("_r1_headers", None)
+                    r1_headers = result.pop("_r1_headers", None) or {}
+                    r1_headers["tool_call_id"] = tc["id"]
                     return Response.json(result, headers=r1_headers)
                 else:
                     return Response.json({
