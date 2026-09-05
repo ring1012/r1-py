@@ -46,11 +46,11 @@ class Default(WorkerEntrypoint):
                     serial = query_params.get("serial", [""])[0]
                     if not serial:
                         return Response.json({"error": "Missing r1-serial header or serial query param"}, status=400)
-                
+
                 # Fetch config from KV (try serial first, then default)
                 device_config = None
                 now_ms = int(time.time() * 1000)
-                
+
                 # 1. Try specific serial config
                 kv_key = f"device:{serial}"
                 config_str = await self.env.R1.get(kv_key)
@@ -77,10 +77,10 @@ class Default(WorkerEntrypoint):
                                 return Response.json({"error": "Default configuration also expired", "code": 403}, status=403)
                         except Exception as e:
                             print(f"Error parsing default config: {e}")
-                
+
                 if not device_config:
                     return Response.json({"error": f"Configuration not found for device {serial} or default"}, status=404)
-                
+
                 # Extract and decode AI config from header as fallback
                 ai_header_config = {}
                 x_r1_ai = request.headers.get("x-r1-ai")
@@ -92,7 +92,7 @@ class Default(WorkerEntrypoint):
                         print(f"Error decoding x-r1-ai header: {e}")
 
                 return await self.process_chat(messages, device_config, ai_header_config, request)
-            
+
             # Proxy for non-chat paths
             real_endpoint = request.headers.get("x-r1-real")
             if not real_endpoint:
@@ -141,14 +141,14 @@ class Default(WorkerEntrypoint):
         ai_config = device_config.get("aiConfig")
         if not ai_config or not ai_config.get("key"):
             ai_config = ai_header_config or {}
-        
+
         model = ai_config.get("model")
         endpoint = ai_config.get("endpoint")
         cdn = None
         api_key = ai_config.get("key")
         system_prompt = ai_config.get("systemPrompt")
         extra_body_str = ai_config.get("extraBody", "{}")
-        
+
         try:
             extra_body = json.loads(extra_body_str)
         except:
@@ -168,7 +168,7 @@ class Default(WorkerEntrypoint):
             streaming=False,
             extra_body=extra_body
         )
-        
+
         # Collect request headers for tools
         request_headers = {}
         if request is not None:
@@ -177,7 +177,7 @@ class Default(WorkerEntrypoint):
                     request_headers[key.lower()] = request.headers.get(key)
             except Exception as e:
                 print(f"Error reading request headers: {e}")
-        
+
         # Fetch providers config from KV
         providers_config = {}
         providers_str = await self.env.R1.get("providers")
@@ -190,7 +190,7 @@ class Default(WorkerEntrypoint):
         # Initialize tools with device context, request headers and providers config
         r1_tools = R1Tools(device_config, request_headers, providers_config)
         all_tools = r1_tools.get_all_tools()
-        
+
         llm_with_tools = llm.bind_tools(all_tools)
 
         # Build UTC+8 time prefix for system prompt
@@ -216,12 +216,14 @@ class Default(WorkerEntrypoint):
         if response.tool_calls:
             # Map tools by their name
             TOOL_MAP = {tool.name: tool for tool in all_tools}
-            
+
             tc = response.tool_calls[0]
             tool = TOOL_MAP.get(tc["name"])
-            
+
             if tool:
-                result = await tool.invoke(tc["args"])
+                # Filter out internal keys from args before invoking
+                invoke_args = {k: v for k, v in tc["args"].items() if not k.startswith("_")}
+                result = await tool.invoke(invoke_args)
                 # If result is a dict, it's the structured box client response
                 if isinstance(result, dict):
                     # Extract r1 headers if present

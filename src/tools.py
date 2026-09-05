@@ -157,21 +157,84 @@ class R1Tools:
         return ret
 
     @tool
-    def homeassistant(self, target: str, act_value: str, parameter: Optional[str] = "") -> dict:
-        """智能家居控制，比如打开灯、热得快，空调，调节温度，查询湿度，等等
-        sample: 把客厅空调温度调整为23度 -> target=客厅空调 parameter=temperature actValue=23
+    async def homeassistant(self, control_params: Optional[str] = "", success_prompt: str = "", fail_prompt: str = "") -> dict:
+        """智能家居控制与状态查询。
+
+        【核心规则】判断查询还是控制：
+        - 用户只提到设备名称 + 属性名称 = 查询该属性的当前值
+        - 用户明确要求改变设备状态 = 控制操作
+
+        【判断示例】以下都是【查询】，control_params 必须为空：
+        - "主卧空调" → 查询主卧空调状态
+        - "主卧空调温度" → 查询当前温度设置（不是调温度！）
+        - "主卧空调模式" → 查询当前模式（不是改模式！）
+        - "客厅灯亮度" → 查询当前亮度（不是调亮度！）
+        - "客厅灯开关状态" → 查询是否开着
+        - "热水器温度" → 查询当前温度
+        - "卧室空调状态" → 查询状态
+        - "空调制冷还是制热" → 查询当前模式
+        - "空调几度" → 查询当前温度
+
+        【判断示例】以下才是【控制】，需要填写 control_params：
+        - "把主卧空调调到26度" → {"service":"set_temperature","temperature":26}
+        - "打开客厅灯" → {"service":"turn_on"}
+        - "关灯" → {"service":"turn_off"}
+        - "空调调成制冷" → {"service":"set_hvac_mode","hvac_mode":"cool"}
+        - "空调开到28度" → {"service":"set_temperature","temperature":28}
+        - "亮度调到50" → {"service":"turn_on","brightness":128}
+
+        【简单判断法】
+        如果用户的句子中包含"调到"、"打开"、"关闭"、"开"、"关"、"设置为"等动作词 = 控制
+        如果用户的句子只是提到设备名称或属性名称 = 查询
+
+        control_params 格式根据设备 domain 不同：
+        light: service 为 turn_on/turn_off/toggle，可选字段 brightness(0-255)、color_temp(整数)、rgb_color([r,g,b])；
+        switch: service 为 turn_on/turn_off/toggle，无可选字段；
+        climate: service 为 set_hvac_mode，字段 hvac_mode("heat"/"cool"/"auto"/"off")；
+        或 service 为 set_temperature，字段 temperature(浮点数)；
+        或 service 为 set_fan_mode，字段 fan_mode(字符串)；
+        或 service 为 set_swing_mode，字段 swing_mode(字符串)；
+        fan: service 为 turn_on/turn_off/set_speed/oscillate，可选字段 speed("off"/"low"/"medium"/"high"/"auto")、oscillation(布尔值)；
+        cover: service 为 open_cover/close_cover/stop_cover/set_cover_position，可选字段 position(0-100)；
+        media_player: service 为 media_play/media_pause/media_stop/volume_set/volume_mute，可选字段 volume_level(0.0-1.0)、is_volume_muted(布尔值)；
+        vacuum: service 为 start/stop/pause/return_to_base，无可选字段；
+        lock: service 为 lock/unlock，无可选字段；
+        humidifier: service 为 turn_on/turn_off/set_humidity/set_mode，可选字段 humidity(整数)、mode(字符串)
         
         Args:
-            target: 控制对象：主卧空调，热得快。输出中文
-            parameter: 属性：温度（temperature），风速。输出英文
-            act_value: 动作或值：打开(on), 关闭(off)， 23，不需要单位。
+            control_params: JSON 对象，包含 service 和对应 service_data 字段。仅当用户明确要求控制设备时才填写，否则留空字符串。示例：{"service":"turn_on","brightness":128}
+            success_prompt: 操作成功时返回给用户的话术模板
+            fail_prompt: 操作失败时返回给用户的话术模板
         """
-        # hass_config = self.device_config.get("hassConfig", {})
-        msg = f"已经为您执行：{target} {parameter or ''} 设置为 {act_value}"
+        result = {
+            "control_params": control_params or "",
+            "success_prompt": success_prompt,
+            "fail_prompt": fail_prompt
+        }
         return {
-            "general": {"text": msg, "type": "T"},
-            "code": "SETTING_EXEC",
-            "service": "cn.yunzhisheng.setting"
+            "code": "ANSWER",
+            "matchType": "NOT_UNDERSTAND",
+            "originIntent": {"nluSlotInfos": []},
+            "confidence": 0.088038474,
+            "modelIntentClsScore": {},
+            "history": "cn.yunzhisheng.chat",
+            "source": "krc",
+            "uniCarRet": {
+                "result": {},
+                "returnCode": 609,
+                "message": "http post reuqest error"
+            },
+            "asr_recongize": "hello world",
+            "rc": 0,
+            "general": {"text": json.dumps(result, ensure_ascii=False), "type": "T"},
+            "returnCode": 0,
+            "audioUrl": "http://asrv3.hivoice.cn/trafficRouter/r/0bXs9E",
+            "retTag": "nlu",
+            "service": "cn.yunzhisheng.custom",
+            "nluProcessTime": "648",
+            "text": "控制完成",
+            "responseId": "9a83414b09024d9d85df88aa07cad8c9",
+            "_r1_headers": {"r1-sname": "cn.yunzhisheng.custom"}
         }
 
     @tool
