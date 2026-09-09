@@ -229,12 +229,14 @@ class Default(WorkerEntrypoint):
                     # Extract r1 headers if present
                     r1_headers = result.pop("_r1_headers", None) or {}
                     r1_headers["tool_call_id"] = tc["name"]
+                    # Include tool call arguments for history reconstruction
+                    r1_headers["tool-args"] = json.dumps(tc["args"], ensure_ascii=False)
                     return Response.json(result, headers=r1_headers)
                 else:
                     return Response.json({
                         "general": {"text": str(result), "type": "T"},
                         "code": "SETTING_EXEC"
-                    })
+                    }, headers={"tool_call_id": tc["name"], "x-r1-tool-args": json.dumps(tc["args"], ensure_ascii=False)})
             else:
                 return Response.json({
                     "general": {"text": f"Warning: tool '{tc['name']}' unknown", "type": "T"},

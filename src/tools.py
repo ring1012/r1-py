@@ -117,20 +117,20 @@ class R1Tools:
 
     @tool
     async def playMusic(self, author: Optional[str] = "", song_name: Optional[str] = "", keyword: Optional[str] = "", playlist_name: Optional[str] = "") -> dict:
-        """用于处理播放音乐请求，比如流行歌曲，儿歌，或者播放特定歌单。
-        samples: 我想听刀郎的歌，播放夜曲，播放我的收藏，播放周杰伦歌单
+        """用于播放音乐、歌曲。当用户想听歌、听音乐时调用此工具。
+        samples: 我想听刀郎的歌、播放夜曲、播放周杰伦的歌、听音乐、来首歌、播放我的收藏、播放歌单、放首歌、听首歌、来点音乐
         
         Args:
             author: 歌曲作者，可以为空字符串
             song_name: 歌曲名称，可以为空字符串
             keyword: 歌曲搜索关键词，可以为空字符串
-            playlist_name: 歌单名称，比如“我的收藏”
+            playlist_name: 歌单名称，比如"我的收藏"
         """
         if playlist_name:
             # 播放歌单逻辑
             serial = self.request_headers.get("r1-serial", "")
             headers = {"x-r1-serial": serial}
-            playlist_url = f"https://r1.huan.dedyn.io/api/music/song-list?keyword={playlist_name}"
+            playlist_url = f"https://air1.pp.ua/api/music/song-list?keyword={playlist_name}"
             
             data = {"count": 0, "musicinfo": []}
             try:
@@ -239,11 +239,12 @@ class R1Tools:
 
     @tool
     async def playNews(self, user_input: str) -> dict:
-        """用于播放新闻。
-        samples: 播放新闻
+        """用于播放新闻、收听新闻节目。
+        当用户想听新闻时调用此工具。
+        samples: 播放新闻、听新闻、来点新闻、最新新闻、今天新闻、新闻播报、整点新闻、国内新闻、国际新闻、体育新闻、财经新闻
         
         Args:
-            user_input: 用户输入关键词或描述
+            user_input: 用户输入关键词或描述，如"国内新闻"、"体育新闻"
         """
         url = "https://apppc.cnr.cn/cnr45609411d2c5a16/e281277129d478c12c2ed58e84ca906b/f76a0411ae1ff31be9f9e28f0b51348b"
         
@@ -298,11 +299,11 @@ class R1Tools:
 
     @tool
     async def playAudio(self, keyword: str) -> dict:
-        """用于播放故事、视频、有声读物等。
-        samples: 我想看三体，播放三体有声读物
+        """用于播放故事、有声读物、广播剧、相声、评书等音频内容。
+        samples: 我想看三体、播放三体有声读物、听故事、来个故事、播放相声、听评书、播放广播剧、有声小说
         
         Args:
-            keyword: 关键词
+            keyword: 关键词，如书名、故事名、相声名等
         """
         story_endpoint = self._resolve_endpoint("x-r1-story", "story", "audioConfig")
         data, r1_headers = await self._fetch_media("audioConfig", keyword, "audioinfo", story_endpoint)
@@ -310,11 +311,11 @@ class R1Tools:
 
     @tool
     async def playRadio(self, radio_name: str) -> dict:
-        """用于播放广播
-        samples: 我想听上海交通广播
+        """用于播放广播电台节目。
+        samples: 我想听上海交通广播、播放收音机、听广播、中央人民广播电台、中国之声、调频FM
         
         Args:
-            radio_name: 广播名称
+            radio_name: 广播电台名称
         """
         data, _ = await self._fetch_media("radioConfig", radio_name, "radioinfo")
         link = ""
@@ -379,12 +380,12 @@ class R1Tools:
 
     @tool
     async def queryWeather(self, location_name: Optional[str] = "", offset_day: Optional[int] = 0) -> dict:
-        """用于查询天气，位置名默认为空字符串
-        samples: 后天什么天气 -> locationName="" offsetDay=2
+        """用于查询天气信息。当用户想知道天气情况时调用此工具。
+        samples: 今天什么天气、明天天气怎么样、后天会下雨吗、上海天气、北京明天天气、今天几度、会下雨吗、需要带伞吗、这周天气
         
         Args:
-            location_name: 位置名
-            offset_day: offsetDay，0表示今天，1表示明天，以此类推
+            location_name: 位置名，如"上海"、"北京"，为空则使用当前位置
+            offset_day: 偏移天数，0表示今天，1表示明天，2表示后天，以此类推
         """
         weather_cfg = self._get_weather_config()
         endpoint = weather_cfg.get("endpoint", "").rstrip("/")
