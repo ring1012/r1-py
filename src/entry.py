@@ -208,7 +208,9 @@ class Default(WorkerEntrypoint):
         if system_prompt or time_context:
             has_system = any(m.get("role") == "system" for m in messages)
             if not has_system:
-                full_system = f"{time_context}\n{system_prompt}" if (time_context and system_prompt) else (time_context or system_prompt or "")
+                # 强制要求调用 function tool
+                tool_rule = "\n【重要规则】你必须调用一个 function tool 来回复用户。不要直接返回文本，必须通过调用工具来响应。如果用户问题是普通聊天/问答，使用 chat 工具。"
+                full_system = f"{time_context}\n{system_prompt}{tool_rule}" if (time_context and system_prompt) else ((time_context or system_prompt or "") + tool_rule)
                 messages.insert(0, {"role": "system", "content": full_system})
 
         response = await llm_with_tools.ainvoke(messages)

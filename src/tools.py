@@ -116,6 +116,39 @@ class R1Tools:
         return ret
 
     @tool
+    async def chat(self, answer: str) -> dict:
+        """用于回答用户的普通问题、闲聊、知识问答等。
+        当用户的问题不属于音乐、新闻、天气、智能家居等特定功能时，使用此工具回复。
+        samples: 什么是人工智能、地球为什么是圆的、1+1等于几、你好、今天心情不好、给我讲个笑话
+        
+        Args:
+            answer: 回复用户的内容
+        """
+        return {
+            "code": "ANSWER",
+            "matchType": "NOT_UNDERSTAND",
+            "confidence": 0.8,
+            "history": "cn.yunzhisheng.chat",
+            "source": "nlu",
+            "asr_recongize": "OK",
+            "rc": 0,
+            "general": {
+                "style": "CQA_common_customized",
+                "text": answer,
+                "type": "T",
+                "resourceId": "904757"
+            },
+            "returnCode": 0,
+            "audioUrl": "http://asrv3.hivoice.cn/trafficRouter/r/TRdECS",
+            "retTag": "nlu",
+            "service": "cn.yunzhisheng.chat",
+            "nluProcessTime": "717",
+            "text": "OK",
+            "responseId": "9a83414b09024d9d85df88aa07cad8c9",
+            "_r1_headers": {"r1-sname": "cn.yunzhisheng.chat"}
+        }
+
+    @tool
     async def playMusic(self, author: Optional[str] = "", song_name: Optional[str] = "", keyword: Optional[str] = "", playlist_name: Optional[str] = "") -> dict:
         """用于播放音乐、歌曲。当用户想听歌、听音乐时调用此工具。
         samples: 我想听刀郎的歌、播放夜曲、播放周杰伦的歌、听音乐、来首歌、播放我的收藏、播放歌单、放首歌、听首歌、来点音乐
@@ -175,34 +208,42 @@ class R1Tools:
         - "空调制冷还是制热" → 查询当前模式
         - "空调几度" → 查询当前温度
 
-        【判断示例】以下才是【控制】，需要填写 control_params：
-        - "把主卧空调调到26度" → {"service":"set_temperature","temperature":26}
-        - "打开客厅灯" → {"service":"turn_on"}
-        - "关灯" → {"service":"turn_off"}
-        - "空调调成制冷" → {"service":"set_hvac_mode","hvac_mode":"cool"}
-        - "空调开到28度" → {"service":"set_temperature","temperature":28}
-        - "亮度调到50" → {"service":"turn_on","brightness":128}
+        【判断示例】以下才是【控制】，需要填写 control_params（分绝对值/相对值两种）：
+        绝对值（用户说"调到XX"）：直接给最终值，无需查询
+        - "把主卧空调调到26度" → {"service":"set_temperature","service_data":{"temperature":26}}
+        - "亮度调到50" → {"service":"turn_on","service_data":{"brightness":128}}
+        - "热水器温度调到40度" → {"service":"set_temperature","service_data":{"temperature":40}}
+        相对值（用户说"加/减XX"）：用 delta，无需知道当前值，dummy 会查当前值换算
+        - "空调温度调高一度/调低一度" → {"service":"set_temperature","service_data":{"delta":1}} / {"service":"set_temperature","service_data":{"delta":-1}}
+        - "温度加2度" → {"service":"set_temperature","service_data":{"delta":2}}
+        - "热水器温度调高一度" → {"service":"set_temperature","service_data":{"delta":1}}
+        - "亮度调高/调低" → {"service":"turn_on","service_data":{"delta":1}} / {"service":"turn_on","service_data":{"delta":-1}}
+        - "亮度加30" → {"service":"turn_on","service_data":{"delta":30}}
+        其他： "打开客厅灯" → {"service":"turn_on"} / "关灯" → {"service":"turn_off"} / "空调调成制冷" → {"service":"set_hvac_mode","service_data":{"hvac_mode":"cool"}} / "空调开到28度" → {"service":"set_temperature","service_data":{"temperature":28}}
+        - "空调风速调到自动/静音/低风/中风/高风" → {"service":"set_fan_mode","service_data":{"fan_mode":"auto"}} / "silent" / "low" / "medium" / "high"
+        - "空调扫风打开/关闭" → {"service":"set_swing_mode","service_data":{"swing_mode":"on"}} / {"service":"set_swing_mode","service_data":{"swing_mode":"off"}}
 
         【简单判断法】
         如果用户的句子中包含"调到"、"打开"、"关闭"、"开"、"关"、"设置为"等动作词 = 控制
         如果用户的句子只是提到设备名称或属性名称 = 查询
 
-        control_params 格式根据设备 domain 不同：
-        light: service 为 turn_on/turn_off/toggle，可选字段 brightness(0-255)、color_temp(整数)、rgb_color([r,g,b])；
+        control_params 格式根据设备 domain 不同（注意：所有 service_data 字段必须放在 service_data 对象内，不要放在顶层）：
+        light: service 为 turn_on/turn_off/toggle，service_data 可选字段 brightness(0-255)、color_temp(整数)、rgb_color([r,g,b])；支持相对调节 {"service":"turn_on","service_data":{"delta":1}} 默认步进+25，用户可指定 {"delta":30}
         switch: service 为 turn_on/turn_off/toggle，无可选字段；
         climate: service 为 set_hvac_mode，字段 hvac_mode("heat"/"cool"/"auto"/"off")；
-        或 service 为 set_temperature，字段 temperature(浮点数)；
-        或 service 为 set_fan_mode，字段 fan_mode(字符串)；
+        或 service 为 set_temperature，字段 temperature(浮点数)；支持相对 {"service":"set_temperature","service_data":{"delta":1}} 默认±1度，用户可指定 {"delta":2}
+        或 service 为 set_fan_mode，字段 fan_mode(字符串)；支持相对调档 delta:1 表示档位+1
         或 service 为 set_swing_mode，字段 swing_mode(字符串)；
-        fan: service 为 turn_on/turn_off/set_speed/oscillate，可选字段 speed("off"/"low"/"medium"/"high"/"auto")、oscillation(布尔值)；
-        cover: service 为 open_cover/close_cover/stop_cover/set_cover_position，可选字段 position(0-100)；
-        media_player: service 为 media_play/media_pause/media_stop/volume_set/volume_mute，可选字段 volume_level(0.0-1.0)、is_volume_muted(布尔值)；
+        fan: service 为 turn_on/turn_off/set_speed/oscillate，service_data 可选字段 speed("off"/"low"/"medium"/"high"/"auto")、oscillation(布尔值)；支持 delta:1 档位步进
+        cover: service 为 open_cover/close_cover/stop_cover/set_cover_position，service_data 可选字段 position(0-100)；支持 {"delta":10} 默认±10%
+        media_player: service 为 media_play/media_pause/media_stop/volume_set/volume_mute，service_data 可选字段 volume_level(0.0-1.0)、is_volume_muted(布尔值)；支持 {"delta":0.1}
         vacuum: service 为 start/stop/pause/return_to_base，无可选字段；
         lock: service 为 lock/unlock，无可选字段；
-        humidifier: service 为 turn_on/turn_off/set_humidity/set_mode，可选字段 humidity(整数)、mode(字符串)
+        humidifier: service 为 turn_on/turn_off/set_humidity/set_mode，service_data 可选字段 humidity(整数)、mode(字符串)；支持 {"delta":1} 默认±5%
+        water_heater: service 为 turn_on/turn_off/set_temperature，service_data 可选字段 temperature(浮点数)；支持 {"delta":1}
         
         Args:
-            control_params: JSON 对象，包含 service 和对应 service_data 字段。仅当用户明确要求控制设备时才填写，否则留空字符串。示例：{"service":"turn_on","brightness":128}
+            control_params: JSON 对象，包含 service 和 service_data。仅当用户明确要求控制设备时才填写，否则留空字符串。示例：{"service":"turn_on","service_data":{"brightness":128}}
             success_prompt: 操作成功时返回给用户的话术模板
             fail_prompt: 操作失败时返回给用户的话术模板
         """
@@ -555,6 +596,7 @@ class R1Tools:
 
     def get_all_tools(self):
         return [
+            self.chat,
             self.playMusic,
             self.homeassistant,
             self.playNews,
