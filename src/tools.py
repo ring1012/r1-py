@@ -190,7 +190,7 @@ class R1Tools:
         return ret
 
     @tool
-    async def homeassistant(self, control_params: Optional[str] = "", success_prompt: str = "", fail_prompt: str = "") -> dict:
+    async def homeassistant(self, target_name: str, control_params: Optional[str] = "", success_prompt: str = "", fail_prompt: str = "") -> dict:
         """智能家居控制与状态查询。
 
         【核心规则】判断查询还是控制：
@@ -243,11 +243,13 @@ class R1Tools:
         water_heater: service 为 turn_on/turn_off/set_temperature，service_data 可选字段 temperature(浮点数)；支持 {"delta":1}
         
         Args:
+            target_name: 用户要操作的实体名称，如"主卧空调"、"客厅灯"、"热水器"，必须从用户原话中提取
             control_params: JSON 对象，包含 service 和 service_data。仅当用户明确要求控制设备时才填写，否则留空字符串。示例：{"service":"turn_on","service_data":{"brightness":128}}
             success_prompt: 操作成功时返回给用户的话术模板
             fail_prompt: 操作失败时返回给用户的话术模板
         """
         result = {
+            "target_name": target_name,
             "control_params": control_params or "",
             "success_prompt": success_prompt,
             "fail_prompt": fail_prompt
