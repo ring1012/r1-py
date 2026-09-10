@@ -210,9 +210,9 @@ class R1Tools:
 
         【判断示例】以下才是【控制】，需要填写 control_params（分绝对值/相对值两种）：
         绝对值（用户说"调到XX"）：直接给最终值，无需查询
-        - "把主卧空调调到26度" → {"service":"set_temperature","service_data":{"temperature":26}}
-        - "亮度调到50" → {"service":"turn_on","service_data":{"brightness":128}}
-        - "热水器温度调到40度" → {"service":"set_temperature","service_data":{"temperature":40}}
+        - "主卧空调26度" 或者 "主卧空调调到26度" → {"service":"set_temperature","service_data":{"temperature":26}}
+        - "亮度调到50" 或者 "亮度50"→ {"service":"turn_on","service_data":{"brightness":128}}
+        - "热水器温度40度" → {"service":"set_temperature","service_data":{"temperature":40}}
         相对值（用户说"加/减XX"）：用 delta，无需知道当前值，dummy 会查当前值换算
         - "空调温度调高一度/调低一度" → {"service":"set_temperature","service_data":{"delta":1}} / {"service":"set_temperature","service_data":{"delta":-1}}
         - "温度加2度" → {"service":"set_temperature","service_data":{"delta":2}}
@@ -222,9 +222,11 @@ class R1Tools:
         其他： "打开客厅灯" → {"service":"turn_on"} / "关灯" → {"service":"turn_off"} / "空调调成制冷" → {"service":"set_hvac_mode","service_data":{"hvac_mode":"cool"}} / "空调开到28度" → {"service":"set_temperature","service_data":{"temperature":28}}
         - "空调风速调到自动/静音/低风/中风/高风" → {"service":"set_fan_mode","service_data":{"fan_mode":"auto"}} / "silent" / "low" / "medium" / "high"
         - "空调扫风打开/关闭" → {"service":"set_swing_mode","service_data":{"swing_mode":"on"}} / {"service":"set_swing_mode","service_data":{"swing_mode":"off"}}
+        - "打开零冷水/关闭零冷水" → target_name 必须为"零冷水"或"热水器的零冷水"，不要只写"热水器"；如 {"service":"turn_on"} / {"service":"turn_off"}
 
         【简单判断法】
         如果用户的句子中包含"调到"、"打开"、"关闭"、"开"、"关"、"设置为"等动作词 = 控制
+        如果用户的句子中包含具体的设置数据"温度"、"风速"、"模式"等明确明标词 = 控制
         如果用户的句子只是提到设备名称或属性名称 = 查询
 
         control_params 格式根据设备 domain 不同（注意：所有 service_data 字段必须放在 service_data 对象内，不要放在顶层）：
